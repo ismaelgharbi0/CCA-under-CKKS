@@ -79,7 +79,7 @@ def run_all_experiments(
     # ------------------------------------------------------------------
     all_results = {
         p: {
-            m: {"RE_a": [], "RE_b": [], "RE_rho": [], "levels": [], "time": []}
+            m: {"RE_a": [], "RE_b": [], "RE_rho": [], "RE_avg": [], "levels": [], "time": []}
             for m in methods
         }
         for p in p_values
@@ -144,6 +144,8 @@ def run_all_experiments(
             all_results[p]["alternating_cca"]["RE_a"].append(r1["RE_a"])
             all_results[p]["alternating_cca"]["RE_b"].append(r1["RE_b"])
             all_results[p]["alternating_cca"]["RE_rho"].append(r1["RE_rho"])
+            all_results[p]["alternating_cca"]["RE_avg"].append(
+                (r1["RE_a"] + r1["RE_b"] + r1["RE_rho"]) / 3.0)
             all_results[p]["alternating_cca"]["levels"].append(sim1.level)
             all_results[p]["alternating_cca"]["time"].append(t_end - t_start)
 
@@ -172,6 +174,8 @@ def run_all_experiments(
             all_results[p]["als_cca"]["RE_a"].append(r2["RE_a"])
             all_results[p]["als_cca"]["RE_b"].append(r2["RE_b"])
             all_results[p]["als_cca"]["RE_rho"].append(r2["RE_rho"])
+            all_results[p]["als_cca"]["RE_avg"].append(
+                (r2["RE_a"] + r2["RE_b"] + r2["RE_rho"]) / 3.0)
             all_results[p]["als_cca"]["levels"].append(sim2.level)
             all_results[p]["als_cca"]["time"].append(t_end - t_start)
 
@@ -199,6 +203,8 @@ def run_all_experiments(
             all_results[p]["pca_cca"]["RE_a"].append(r3["RE_a"])
             all_results[p]["pca_cca"]["RE_b"].append(r3["RE_b"])
             all_results[p]["pca_cca"]["RE_rho"].append(r3["RE_rho"])
+            all_results[p]["pca_cca"]["RE_avg"].append(
+                (r3["RE_a"] + r3["RE_b"] + r3["RE_rho"]) / 3.0)
             all_results[p]["pca_cca"]["levels"].append(sim3.level)
             all_results[p]["pca_cca"]["time"].append(t_end - t_start)
 
@@ -223,9 +229,158 @@ def run_all_experiments(
     # Plots
     # ------------------------------------------------------------------
     _plot_re_vs_p(all_results, p_values, methods, n_runs)
+    _plot_reb_vs_p(all_results, p_values, methods, n_runs)
+    _plot_rerho_vs_p(all_results, p_values, methods, n_runs)
+    _plot_re_avg_vs_p(all_results, p_values, methods, n_runs)
     _plot_runtime_vs_p(all_results, p_values, methods, n_runs)
-    _plot_re_times_runtime_vs_p(all_results, p_values, methods, n_runs)
+    _plot_re_avg_times_runtime_vs_p(all_results, p_values, methods, n_runs)
 
+def _plot_reb_vs_p(
+    all_results: dict,
+    p_values: list[int],
+    methods: list[str],
+    n_runs: int = 10,
+) -> None:
+    """Plot mean RE(b) vs p for all three methods."""
+    colors = {
+        "alternating_cca": "#4C72B0",
+        "als_cca"        : "#DD8452",
+        "pca_cca"        : "#55A868",
+    }
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for m in methods:
+        means = [np.mean(all_results[p][m]["RE_b"]) for p in p_values]
+        stds  = [1.96 * np.std(all_results[p][m]["RE_b"]) for p in p_values]
+        ax.errorbar(p_values, means, yerr=stds, label=m, color=colors[m],
+                    marker="o", capsize=4, linewidth=1.5)
+    ax.set_xlabel("p = q")
+    ax.set_ylabel("Mean RE(b)")
+    ax.set_title("Average RE(b) vs dimension\n(n=1000, rho1=0.9, 10 runs per p)")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x)}"))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.2e}"))
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("reb_vs_p.png", dpi=150)
+    print("Saved: reb_vs_p.png")
+    plt.show()
+
+
+def _plot_rerho_vs_p(
+    all_results: dict,
+    p_values: list[int],
+    methods: list[str],
+    n_runs: int = 10,
+) -> None:
+    """Plot mean RE(rho) vs p for all three methods."""
+    colors = {
+        "alternating_cca": "#4C72B0",
+        "als_cca"        : "#DD8452",
+        "pca_cca"        : "#55A868",
+    }
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for m in methods:
+        means = [np.mean(all_results[p][m]["RE_rho"]) for p in p_values]
+        stds  = [1.96 * np.std(all_results[p][m]["RE_rho"]) for p in p_values]
+        ax.errorbar(p_values, means, yerr=stds, label=m, color=colors[m],
+                    marker="o", capsize=4, linewidth=1.5)
+    ax.set_xlabel("p = q")
+    ax.set_ylabel("Mean RE(rho)")
+    ax.set_title("Average RE(rho) vs dimension\n(n=1000, rho1=0.9, 10 runs per p)")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x)}"))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.2e}"))
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("rerho_vs_p.png", dpi=150)
+    print("Saved: rerho_vs_p.png")
+    plt.show()
+
+
+def _plot_re_avg_vs_p(
+    all_results: dict,
+    p_values: list[int],
+    methods: list[str],
+    n_runs: int = 10,
+) -> None:
+    """Plot mean RE_avg = (RE(a)+RE(b)+RE(rho))/3 vs p."""
+    colors = {
+        "alternating_cca": "#4C72B0",
+        "als_cca"        : "#DD8452",
+        "pca_cca"        : "#55A868",
+    }
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for m in methods:
+        means = [np.mean(all_results[p][m]["RE_avg"]) for p in p_values]
+        stds  = [1.96 * np.std(all_results[p][m]["RE_avg"]) for p in p_values]
+        ax.errorbar(p_values, means, yerr=stds, label=m, color=colors[m],
+                    marker="o", capsize=4, linewidth=1.5)
+    ax.set_xlabel("p = q")
+    ax.set_ylabel("Mean RE_avg")
+    ax.set_title(
+        r"Average $\overline{\mathrm{RE}}$ = (RE(a)+RE(b)+RE($\rho$))/3 vs dimension"
+        "\n(n=1000, rho1=0.9, 10 runs per p)"
+    )
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x)}"))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.2e}"))
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("re_avg_vs_p.png", dpi=150)
+    print("Saved: re_avg_vs_p.png")
+    plt.show()
+
+
+def _plot_re_avg_times_runtime_vs_p(
+    all_results: dict,
+    p_values: list[int],
+    methods: list[str],
+    n_runs: int = 10,
+) -> None:
+    """Plot mean RE_avg * mean runtime vs p for all three methods."""
+    colors = {
+        "alternating_cca": "#4C72B0",
+        "als_cca"        : "#DD8452",
+        "pca_cca"        : "#55A868",
+    }
+    fig, ax = plt.subplots(figsize=(8, 5))
+    for m in methods:
+        re_means = [np.mean(all_results[p][m]["RE_avg"]) for p in p_values]
+        t_means  = [np.mean(all_results[p][m]["time"])   for p in p_values]
+        re_stds  = [np.std(all_results[p][m]["RE_avg"])  for p in p_values]
+        t_stds   = [np.std(all_results[p][m]["time"])    for p in p_values]
+        products = [re_means[i] * t_means[i] for i in range(len(p_values))]
+        product_stds = [
+            1.96 * np.sqrt(
+                (re_stds[i] / (re_means[i] + 1e-12)) ** 2 +
+                (t_stds[i]  / (t_means[i]  + 1e-12)) ** 2
+            ) * products[i]
+            for i in range(len(p_values))
+        ]
+        ax.errorbar(p_values, products, yerr=product_stds, label=m,
+                    color=colors[m], marker="o", capsize=4, linewidth=1.5)
+    ax.set_xlabel("p = q")
+    ax.set_ylabel(r"Mean $\overline{\mathrm{RE}}$ x Runtime (s)")
+    ax.set_title(
+        r"$\overline{\mathrm{RE}}$ x Runtime vs dimension"
+        "\n(n=1000, rho1=0.9, 10 runs per p)"
+    )
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{int(x)}"))
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.6f}"))
+    ax.legend()
+    ax.grid(True, alpha=0.3)
+    plt.tight_layout()
+    plt.savefig("re_avg_times_runtime_vs_p.png", dpi=150)
+    print("Saved: re_avg_times_runtime_vs_p.png")
+    plt.show()
 
 def _print_summary_table(
     results_p: dict,
@@ -432,13 +587,13 @@ if __name__ == "__main__":
     run_all_experiments(
         n=1000,
         p_values=[5, 10, 25, 50, 100, 250, 500],
-        n_runs=1,
+        n_runs=10,
         rho1=0.9,
         scale_bits=40,
         max_levels=1000,
         lambda_reg=1e-3,
         n_iters_inv=20,
         T_max=50,
-        n_newton=3,
-        n_goldschmidt=3,
+        n_newton=5,
+        n_goldschmidt=5,
     )
